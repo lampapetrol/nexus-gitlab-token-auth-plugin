@@ -8,19 +8,25 @@
 
 package biz.neustar.nexus.plugins.gitlab.client.rest;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.sonatype.security.usermanagement.DefaultUser;
 import org.sonatype.security.usermanagement.User;
 import org.sonatype.security.usermanagement.UserStatus;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 @JsonIgnoreProperties(ignoreUnknown=true)
-public class GitlabUser {
-    @JsonProperty
+public class GitlabUser implements Serializable {
+
+	private static final long serialVersionUID = 7177988235257452774L;
+
+	@JsonProperty
     private final Integer id;
     @JsonProperty
     private final String username;
@@ -82,7 +88,11 @@ public class GitlabUser {
         return username;
     }
 
-    public User toUser() {
+    public String getPrivateToken() {
+		return private_token;
+	}
+
+	public User toUser() {
         User user = new DefaultUser();
         String fullName = nullToEmpty(this.name);
         String firstName = fullName;
@@ -151,21 +161,8 @@ public class GitlabUser {
 
     @Override
     public String toString() {
-        return new StringBuilder()
-            .append(super.toString())
-            .append("[")
-            .append("id=").append(id)
-            .append("username=").append(username)
-            .append("email=").append(email)
-            .append("name=").append(name)
-            .append("private_token=").append("<HIDDEN>")
-            .append("state=").append(state)
-            .append("created_at=").append(created_at)
-            .append("is_admin=").append(is_admin)
-            .append("identities=").append(identities)
-            .append("can_create_group=").append(can_create_group)
-            .append("can_create_team=").append(can_create_team)
-            .append("can_create_project=").append(can_create_project)
-            .append("]").toString();
+    	// this is displayed in nexus top-right corner
+        return username;
     }
+
 }

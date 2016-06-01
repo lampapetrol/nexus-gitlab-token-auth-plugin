@@ -13,17 +13,14 @@ package biz.neustar.nexus.plugins.gitlab.client.rest;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.rmi.RemoteException;
-import java.util.List;
-import java.util.Map;
+
+import javax.ws.rs.core.MultivaluedMap;
+
 import org.apache.commons.lang.StringUtils;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import biz.neustar.nexus.plugins.gitlab.GitlabAuthenticatingRealm;
-import biz.neustar.nexus.plugins.gitlab.config.v1_0_0.Configuration;
-
+import com.fasterxml.jackson.jaxrs.json.JacksonJsonProvider;
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.UniformInterfaceException;
@@ -33,15 +30,20 @@ import com.sun.jersey.client.apache.ApacheHttpClient;
 import com.sun.jersey.client.apache.config.ApacheHttpClientConfig;
 import com.sun.jersey.client.apache.config.ApacheHttpClientState;
 import com.sun.jersey.client.apache.config.DefaultApacheHttpClientConfig;
+import com.sun.jersey.core.util.MultivaluedMapImpl;
+
+import biz.neustar.nexus.plugins.gitlab.GitlabAuthenticatingRealm;
+import biz.neustar.nexus.plugins.gitlab.config.v1_0_0.Configuration;
 
 /**
  *
  */
 public class RestClient {
+
 	private static final Logger LOGGER = LoggerFactory.getLogger(RestClient.class);
+
 	private static final String GITLAB_API_PATH = "/api/v3/";
 
-	private final ObjectMapper objMapper = new ObjectMapper();
 	private final Client client;
 	private final URI serverURL;
 	private final UserIdMatcher userIdMatcher;
@@ -85,9 +87,10 @@ public class RestClient {
 		client = ApacheHttpClient.create(clientConfig);
 	}
 
-
 	/**
-	 * @param userid
+	 * create a session and retrieve associated
+	 *
+	 * @param userId
 	 * @param token
 	 * @return a <code>org.sonatype.security.usermanagement.User</code> from Gitlab by a userid
 	 * @throws RemoteException
@@ -95,15 +98,16 @@ public class RestClient {
 	public GitlabUser getUser(String userId, String token) throws RemoteException {
 	    LOGGER.debug("getUser({}, xxxx)", String.valueOf(userId));
 
-		WebResource r = client.resource(serverURL.resolve("user?private_token=" + token));
-		try {
-			GitlabUser response = r.get(GitlabUser.class);
-		    if (userIdMatcher.matches(response.getIdentities(), userId)) {
-		        LOGGER.debug(GitlabAuthenticatingRealm.GITLAB_MSG + response.toString());
-		        return response;
-		    } else {
-		        throw new RemoteException("User Id (" + userId + ") doesn't match");
-		    }
+		WebResource r = client.resource(serverURL.resolve("session"));
+	    try {
+		    MultivaluedMap<String, String> params = new MultivaluedMapImpl();
+		    params.add("login", userId);
+		    params.add("password", token);
+			GitlabUser user = r.post(GitlabUser.class, params);
+			if ( ! userIdMatcher.matches(user.getIdentities(), userId) ) {
+				throw new RemoteException("User Id (" + userId + ") doesn't match");
+			}
+			return user;
 		} catch (UniformInterfaceException uie) {
 			throw handleError(uie);
 		}

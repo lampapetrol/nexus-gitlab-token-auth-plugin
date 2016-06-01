@@ -8,17 +8,20 @@
 
 package biz.neustar.nexus.plugins.gitlab.client.rest;
 
-import biz.neustar.nexus.plugins.gitlab.config.v1_0_0.Configuration;
-import com.google.mockwebserver.MockResponse;
-import com.google.mockwebserver.MockWebServer;
-import com.google.mockwebserver.RecordedRequest;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+
 import javax.ws.rs.core.MediaType;
+
 import org.apache.http.HttpHeaders;
 import org.junit.Test;
 import org.sonatype.security.usermanagement.User;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import com.google.mockwebserver.MockResponse;
+import com.google.mockwebserver.MockWebServer;
+import com.google.mockwebserver.RecordedRequest;
+
+import biz.neustar.nexus.plugins.gitlab.config.v1_0_0.Configuration;
 
 public class RestClientTest {
     private static final String GITLAB = "https://git.nexgen.neustar.biz";
@@ -80,7 +83,8 @@ public class RestClientTest {
 
         if (usingMockServer) {
             RecordedRequest request = server.takeRequest(); // 1 request recorded
-            assertEquals("/api/v3/user?private_token=" + token, request.getPath());
+            assertEquals("/api/v3/session", request.getPath());
+            assertEquals("login=jeffrey.damick%40neustar.biz&password=1234alskfadlskfj", request.getUtf8Body());
         }
     }
 }

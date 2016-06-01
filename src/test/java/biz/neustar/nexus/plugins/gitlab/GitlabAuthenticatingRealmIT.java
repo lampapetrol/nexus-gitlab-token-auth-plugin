@@ -12,24 +12,33 @@
  */
 package biz.neustar.nexus.plugins.gitlab;
 
-import com.google.mockwebserver.MockResponse;
-import com.google.mockwebserver.MockWebServer;
-import com.google.mockwebserver.RecordedRequest;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.sonatype.nexus.testsuite.support.ParametersLoaders.firstAvailableTestParameters;
+import static org.sonatype.nexus.testsuite.support.ParametersLoaders.systemTestParameters;
+import static org.sonatype.nexus.testsuite.support.ParametersLoaders.testParameters;
+import static org.sonatype.sisu.filetasks.builder.FileRef.file;
+import static org.sonatype.sisu.filetasks.builder.FileRef.path;
+import static org.sonatype.sisu.goodies.common.Varargs.$;
+
 import java.io.File;
 import java.io.FileReader;
-import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.URI;
 import java.net.URL;
 import java.util.Collection;
+
 import javax.inject.Inject;
 import javax.ws.rs.core.MediaType;
+
 import org.apache.http.HttpHeaders;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.utils.URIBuilder;
-import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.client.utils.URLEncodedUtils;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.junit.Test;
@@ -39,14 +48,9 @@ import org.sonatype.nexus.testsuite.support.NexusRunningParametrizedITSupport;
 import org.sonatype.nexus.testsuite.support.NexusStartAndStopStrategy;
 import org.sonatype.sisu.filetasks.FileTaskBuilder;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.sonatype.nexus.testsuite.support.ParametersLoaders.firstAvailableTestParameters;
-import static org.sonatype.nexus.testsuite.support.ParametersLoaders.systemTestParameters;
-import static org.sonatype.nexus.testsuite.support.ParametersLoaders.testParameters;
-import static org.sonatype.sisu.filetasks.builder.FileRef.file;
-import static org.sonatype.sisu.filetasks.builder.FileRef.path;
-import static org.sonatype.sisu.goodies.common.Varargs.$;
+import com.google.mockwebserver.MockResponse;
+import com.google.mockwebserver.MockWebServer;
+import com.google.mockwebserver.RecordedRequest;
 
 /**
  *
@@ -93,9 +97,9 @@ public class GitlabAuthenticatingRealmIT extends NexusRunningParametrizedITSuppo
     }
 
     protected byte[] loadBody(String fileName) {
-        RandomAccessFile bodyFile = null;
-        try {
-            bodyFile = new RandomAccessFile(testData().resolveFile(fileName), "r");
+        try (
+      		RandomAccessFile bodyFile = new RandomAccessFile(testData().resolveFile(fileName), "r");
+        ) {
             byte[] body = new byte[(int) bodyFile.length()];
             bodyFile.readFully(body);
             return body;
@@ -103,14 +107,6 @@ public class GitlabAuthenticatingRealmIT extends NexusRunningParametrizedITSuppo
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException(e);
-        } finally {
-            if (bodyFile != null) {
-                try {
-                    bodyFile.close();
-                } catch (IOException e) {
-                    // ignore.
-                }
-            }
         }
     }
 
@@ -162,41 +158,23 @@ public class GitlabAuthenticatingRealmIT extends NexusRunningParametrizedITSuppo
         */
 
 
+        File tempPluginConfig = testData().resolveFile("gitlab-plugin-temp.xml");
         // from the mock server
-        RandomAccessFile tempConfig = null;
-        RandomAccessFile gitlabConfig = null;
-        try {
-            File tempPluginConfig = testData().resolveFile("gitlab-plugin-temp.xml");
-            tempConfig = new RandomAccessFile(tempPluginConfig, "r");
-            gitlabConfig = new RandomAccessFile(tempPluginConfig.getParent() + "/gitlab-plugin.xml", "rw");
+        try (
+            RandomAccessFile tempConfig = new RandomAccessFile(tempPluginConfig, "r");
+            RandomAccessFile gitlabConfig = new RandomAccessFile(tempPluginConfig.getParent() + "/gitlab-plugin.xml", "rw");
+        ) {
             gitlabConfig.setLength(0); // truncate.
             String line = tempConfig.readLine();
             while (line != null) {
                 // GITLAB_URL
-                gitlabConfig.write(line
-                        .replace("GITLAB_URL", "http://" + server.getHostName() + ":" + server.getPort()).getBytes(
-                                "UTF-8"));
+                gitlabConfig.write(line.replace("GITLAB_URL", "http://" + server.getHostName() + ":" + server.getPort()).getBytes(UTF_8));
                 gitlabConfig.write('\n');
                 line = tempConfig.readLine();
             }
         } catch (Exception e) {
             e.printStackTrace();
             throw new RuntimeException(e);
-        } finally {
-            try {
-                if (tempConfig != null) {
-                    tempConfig.close();
-                }
-            } catch (Exception e) {
-                // ignore
-            }
-            try {
-                if (gitlabConfig != null) {
-                    gitlabConfig.close();
-                }
-            } catch (Exception e) {
-                // ignore
-            }
         }
 
         // <realm>NexusGitlabAuthenticationRealm</realm>
@@ -224,9 +202,10 @@ public class GitlabAuthenticatingRealmIT extends NexusRunningParametrizedITSuppo
 
         URL nexusUrl = nexus().getUrl();
         URI uri = new URIBuilder().setHost(nexusUrl.getHost()).setPath(nexusUrl.getPath()).setPort(nexusUrl.getPort())
-                .setQuery(nexusUrl.getQuery()).setScheme(nexusUrl.getProtocol()).setUserInfo("jdamick", "asdfasdfasdf")
+                .setParameters(URLEncodedUtils.parse(nexusUrl.getQuery(), UTF_8)).setScheme(nexusUrl.getProtocol()).setUserInfo("jdamick", "asdfasdfasdf")
                 .build().resolve("content/groups/public/");
-        HttpClient httpclient = new DefaultHttpClient();
+
+        HttpClient httpclient = HttpClientBuilder.create().build();
 
         {// request 1
             HttpGet req1 = new HttpGet(uri);
@@ -234,7 +213,7 @@ public class GitlabAuthenticatingRealmIT extends NexusRunningParametrizedITSuppo
             assertEquals(200, resp1.getStatusLine().getStatusCode());
 
             RecordedRequest request = server.takeRequest(); // 1 request recorded
-            assertEquals("/api/v3/user?private_token=asdfasdfasdf", request.getPath());
+            assertEquals("/api/v3/session", request.getPath());
             req1.releaseConnection();
         }
 

@@ -15,6 +15,7 @@ package biz.neustar.nexus.plugins.gitlab;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.shiro.authc.AuthenticationException;
 import org.apache.shiro.authc.AuthenticationInfo;
 import org.apache.shiro.authc.AuthenticationToken;
@@ -31,7 +32,6 @@ import org.codehaus.plexus.component.annotations.Requirement;
 import org.codehaus.plexus.personality.plexus.lifecycle.phase.Disposable;
 import org.codehaus.plexus.personality.plexus.lifecycle.phase.Initializable;
 import org.codehaus.plexus.personality.plexus.lifecycle.phase.InitializationException;
-import org.codehaus.plexus.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonatype.security.usermanagement.User;
@@ -83,34 +83,34 @@ public class GitlabAuthenticatingRealm extends AuthorizingRealm implements Initi
 					+ " is not supported.  A " + UsernamePasswordToken.class.getName() + " is required.");
 		}
 		UsernamePasswordToken userPass = (UsernamePasswordToken) authenticationToken;
-		String token = new String(userPass.getPassword());
+		String token = new String(userPass.getPassword()); //StringUtils.substringAfter(new String(userPass.getPassword()), "password=");
+		String username= userPass.getUsername(); // StringUtils.substringAfter(userPass.getUsername(), "login=");
+
 		if (token.isEmpty()) {
-		    LOGGER.debug(GITLAB_MSG + "token for {} is empty", userPass.getUsername());
+		    LOGGER.debug(GITLAB_MSG + "token for {} is empty", username);
 		    return null;
 		}
 
 		try {
-		    LOGGER.debug(GITLAB_MSG + "authenticating {}", userPass.getUsername());
+		    LOGGER.debug(GITLAB_MSG + "authenticating {}", username);
 
 		    LOGGER.debug(GITLAB_MSG + "null? " + (gitlab == null));
 		    LOGGER.debug(GITLAB_MSG + "null? " + (gitlab.getRestClient() == null));
 
-		    GitlabUser gitlabUser = gitlab.getRestClient().getUser(userPass.getUsername(), token);
+		    GitlabUser gitlabUser = gitlab.getRestClient().getUser(username, token);
 		    User user = gitlabUser.toUser();
 		    if (user.getUserId() == null || user.getUserId().isEmpty()) {
 		        LOGGER.debug(GITLAB_MSG + "authentication failed {}", user);
-		        throw new AuthenticationException(DEFAULT_MESSAGE + " for " + userPass.getUsername());
+		        throw new AuthenticationException(DEFAULT_MESSAGE + " for " + username);
 		    }
-		    LOGGER.debug(GITLAB_MSG + "successfully authenticated {}", userPass.getUsername());
-		    return new SimpleAuthenticationInfo(gitlabUser /*userPass.getPrincipal()*/,
-		            userPass.getCredentials(), getName());
+		    LOGGER.debug(GITLAB_MSG + "successfully authenticated {}", username);
+		    return new SimpleAuthenticationInfo(gitlabUser /*userPass.getPrincipal()*/, userPass.getCredentials(), getName());
 		} catch (Exception e) {
-		    LOGGER.debug(GITLAB_MSG + "authentication failed {}", userPass.getUsername());
+		    LOGGER.debug(GITLAB_MSG + "authentication failed {}", username);
 		    throw new AuthenticationException(DEFAULT_MESSAGE, e);
 		}
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	protected AuthorizationInfo doGetAuthorizationInfo(PrincipalCollection principals) {
 		// only authorize users from this realm
