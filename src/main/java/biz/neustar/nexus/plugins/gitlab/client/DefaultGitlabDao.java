@@ -13,11 +13,13 @@
 package biz.neustar.nexus.plugins.gitlab.client;
 
 import java.net.URISyntaxException;
+
 import org.codehaus.plexus.component.annotations.Component;
 import org.codehaus.plexus.component.annotations.Requirement;
 import org.codehaus.plexus.logging.AbstractLogEnabled;
 import org.codehaus.plexus.personality.plexus.lifecycle.phase.Initializable;
 import org.codehaus.plexus.personality.plexus.lifecycle.phase.InitializationException;
+
 import biz.neustar.nexus.plugins.gitlab.client.rest.CachingRestClient;
 import biz.neustar.nexus.plugins.gitlab.client.rest.RestClient;
 import biz.neustar.nexus.plugins.gitlab.config.GitlabPluginConfiguration;
@@ -29,7 +31,6 @@ import biz.neustar.nexus.plugins.gitlab.config.v1_0_0.Configuration;
 @Component(role = GitlabDao.class, hint = "default")
 public class DefaultGitlabDao extends AbstractLogEnabled implements GitlabDao, Initializable {
 
-    private boolean configured = false;
     private Configuration configuration;
     private RestClient restClient;
 
@@ -45,7 +46,6 @@ public class DefaultGitlabDao extends AbstractLogEnabled implements GitlabDao, I
 			} catch (URISyntaxException use) {
 				throw new InitializationException("Rest client init failed", use);
 			}
-            configured = true;
         }
     }
 

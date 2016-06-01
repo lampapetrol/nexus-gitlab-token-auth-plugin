@@ -13,15 +13,14 @@ package biz.neustar.nexus.plugins.gitlab.client.rest;
 import java.net.URISyntaxException;
 import java.rmi.RemoteException;
 
-import net.sf.ehcache.Cache;
-import net.sf.ehcache.CacheManager;
-import net.sf.ehcache.Element;
-import net.sf.ehcache.store.LfuPolicy;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import biz.neustar.nexus.plugins.gitlab.config.v1_0_0.Configuration;
+import net.sf.ehcache.Cache;
+import net.sf.ehcache.CacheManager;
+import net.sf.ehcache.Element;
+import net.sf.ehcache.store.LfuPolicy;
 
 /**
  *
