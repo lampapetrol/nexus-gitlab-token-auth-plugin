@@ -35,6 +35,7 @@ import org.codehaus.plexus.personality.plexus.lifecycle.phase.InitializationExce
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sonatype.security.usermanagement.User;
+import org.sonatype.security.usermanagement.UserStatus;
 
 import biz.neustar.nexus.plugins.gitlab.client.GitlabDao;
 import biz.neustar.nexus.plugins.gitlab.client.rest.GitlabUser;
@@ -45,6 +46,7 @@ public class GitlabAuthenticatingRealm extends AuthorizingRealm implements Initi
     public static final String GITLAB_MSG = "[Gitlab] ";
 	public static final String ROLE = "NexusGitlabAuthenticationRealm";
 	private static final String DEFAULT_MESSAGE = "Could not retrieve info from Gitlab.";
+	private static final String DISABLED_USER_MESSAGE = "User is disabled in Gitlab.";
 	private static AtomicBoolean active = new AtomicBoolean(false);
 
 	@Requirement
@@ -83,8 +85,8 @@ public class GitlabAuthenticatingRealm extends AuthorizingRealm implements Initi
 					+ " is not supported.  A " + UsernamePasswordToken.class.getName() + " is required.");
 		}
 		UsernamePasswordToken userPass = (UsernamePasswordToken) authenticationToken;
-		String token = new String(userPass.getPassword()); //StringUtils.substringAfter(new String(userPass.getPassword()), "password=");
-		String username= userPass.getUsername(); // StringUtils.substringAfter(userPass.getUsername(), "login=");
+		String token = new String(userPass.getPassword());
+		String username= userPass.getUsername();
 
 		if (token.isEmpty()) {
 		    LOGGER.debug(GITLAB_MSG + "token for {} is empty", username);
@@ -99,12 +101,16 @@ public class GitlabAuthenticatingRealm extends AuthorizingRealm implements Initi
 
 		    GitlabUser gitlabUser = gitlab.getRestClient().getUser(username, token);
 		    User user = gitlabUser.toUser();
+			if ( user.getStatus() != UserStatus.active ) {
+		        LOGGER.debug(GITLAB_MSG + "authentication failed {}", user);
+		        throw new AuthenticationException(DISABLED_USER_MESSAGE + " for " + username);
+			}
 		    if (user.getUserId() == null || user.getUserId().isEmpty()) {
 		        LOGGER.debug(GITLAB_MSG + "authentication failed {}", user);
 		        throw new AuthenticationException(DEFAULT_MESSAGE + " for " + username);
 		    }
 		    LOGGER.debug(GITLAB_MSG + "successfully authenticated {}", username);
-		    return new SimpleAuthenticationInfo(gitlabUser /*userPass.getPrincipal()*/, userPass.getCredentials(), getName());
+		    return new SimpleAuthenticationInfo(gitlabUser, userPass.getCredentials(), getName());
 		} catch (Exception e) {
 		    LOGGER.debug(GITLAB_MSG + "authentication failed {}", username);
 		    throw new AuthenticationException(DEFAULT_MESSAGE, e);

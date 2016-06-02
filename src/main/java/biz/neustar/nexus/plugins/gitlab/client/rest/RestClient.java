@@ -35,9 +35,6 @@ import com.sun.jersey.core.util.MultivaluedMapImpl;
 import biz.neustar.nexus.plugins.gitlab.GitlabAuthenticatingRealm;
 import biz.neustar.nexus.plugins.gitlab.config.v1_0_0.Configuration;
 
-/**
- *
- */
 public class RestClient {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(RestClient.class);
@@ -88,7 +85,13 @@ public class RestClient {
 	}
 
 	/**
-	 * create a session and retrieve associated
+	 * create a session and retrieve associated {@link GitlabUser}.
+	 *
+	 * <pre>
+	 * <code>
+	 * 	curl 'https://gitlabhost/api/v3/session' --data-urlencode 'login=myuser@domain.tld' --data-urlencode 'password=mypassword'
+	 * </code>
+	 * </pre>
 	 *
 	 * @param userId
 	 * @param token
