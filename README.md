@@ -33,7 +33,7 @@ Then you can make changes using the configuration classes.
 
 Build:  `mvn clean install -DskipTests=true`
 
-Generates: target/nexus-gitlab-token-auth-plugin-0.4.0-SNAPSHOT-bundle.zip
+Generates: target/nexus-gitlab-token-auth-plugin-0.5.0-SNAPSHOT-bundle.zip
 
 Integration Tests: `mvn clean integration-test -P it`
 
